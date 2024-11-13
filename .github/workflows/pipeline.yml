@@ -1,0 +1,40 @@
+name: Deploy FastAPI to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up SSH key
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Create directory on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_IP }} "mkdir -p /home/${{ secrets.EC2_USER }}/app"
+
+      - name: Copy files to EC2
+        run: |
+          scp -o StrictHostKeyChecking=no -r * ${{ secrets.EC2_USER }}@${{ secrets.EC2_IP }}:/home/${{ secrets.EC2_USER }}/app
+
+      - name: Install dependencies and start FastAPI
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_IP }} << 'EOF'
+            # Navegar al directorio de la aplicación
+            cd /home/${{ secrets.EC2_USER }}/app
+            # Instalar dependencias
+            pip3 install -r requirements.txt
+            # Finalizar cualquier instancia de la aplicación en ejecución
+            pkill -f "uvicorn main:app" || true
+            # Ejecutar la aplicación en segundo plano con nohup
+            nohup uvicorn main:app --host 0.0.0.0 --port 80 &
+          EOF
