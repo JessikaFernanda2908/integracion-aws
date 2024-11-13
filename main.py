@@ -14,4 +14,4 @@ async def say_hello(name: str):
 
 @app.get("/saludo/{name}")
 async def say_saludo(name: str):
-    return {"message": f"Hello {name}"}
+    return {"message": f"Hola {name}"}
